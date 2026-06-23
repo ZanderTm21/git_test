@@ -1,0 +1,70 @@
+# =====================================================================
+# Lyon Scale — Cold Email AI Agent · configuration
+# Edit the values in [brackets]. Everything here controls how the
+# agent writes your emails. No coding needed — just change the text.
+# =====================================================================
+
+# --- Who the emails come from -----------------------------------------
+sender:
+  name: "[Your Name]"
+  company: "[Your Company]"
+  email: "[you@yourdomain.com]"
+  phone: "[+44 ...]"
+  role: "[Founder]"
+  calendar_link: "[https://calendly.com/your-link]"   # where interested leads book
+
+# --- What you're selling (the offer) ----------------------------------
+# Keep these short and concrete. This is the heart of every email.
+offer:
+  one_liner: "[In one sentence, what you do for property companies]"
+  outcome: "[The #1 result they get — be specific, use a number if you can]"
+  proof: "[One proof point — e.g. 'we built and run this for our own firm, Lyon Renovations']"
+
+# --- Legal / deliverability (UK B2B cold email) -----------------------
+# Required: identify yourself + give an easy opt-out (PECR/GDPR).
+compliance:
+  physical_address: "[Company name, street, city, postcode]"
+  unsubscribe_line: "Not relevant? Reply 'no thanks' and you won't hear from me again."
+
+# --- Follow-up cadence (days after the first email) -------------------
+sequence:
+  - { step: 1, day: 0 }
+  - { step: 2, day: 3 }
+  - { step: 3, day: 7 }
+  - { step: 4, day: 12 }
+
+# --- Decision-maker titles per sub-sector -----------------------------
+# Used to address the right person if a contact title isn't supplied.
+sectors:
+  property management: ["Operations Director", "Head of Property Management", "Managing Agent"]
+  housing association: ["Head of Repairs & Maintenance", "Asset Manager", "Compliance Manager"]
+  facilities management: ["FM Director", "Head of FM", "Contracts Manager"]
+  estate agent: ["Branch Manager", "Director"]
+  sales agent: ["Branch Manager", "Sales Director"]
+  main contractor: ["Commercial Director", "Procurement Manager", "Pre-construction Manager"]
+
+# --- Apollo (sender / sequencer) --------------------------------------
+# CSV route (recommended): import out/apollo_import.csv, then create custom
+# fields named es1_subject, es1_body, es2_subject ... and set each sequence
+# step template to {{es1_subject}} / {{es1_body}} etc.
+# API route (advanced, apollo_push.py): needs a MASTER api key + sequence id.
+apollo:
+  sequence_id: "[your-apollo-sequence-id]"     # from the sequence URL
+  email_account_id: "[your-apollo-mailbox-id]" # mailbox you send from
+  custom_field_names: ["es1_subject","es1_body","es2_subject","es2_body","es3_subject","es3_body","es4_subject","es4_body"]
+
+# --- Warming & sending guardrails (documented; set these in your sender) ---
+warming:
+  cold_domains: 3                 # separate look-alike domains, NOT your main one
+  inboxes_per_domain: 3
+  warmup_weeks: 3                 # minimum before real sends (8-12 wks for full reputation)
+  max_sends_per_inbox_per_day: 40 # ramp up gradually; don't spike
+  max_bounce_rate_pct: 3          # verify lists to stay under this
+  required_dns: ["SPF","DKIM","DMARC"]
+
+# --- Model & behaviour ------------------------------------------------
+# claude-sonnet-4-6  = best quality/cost balance (default)
+# claude-haiku-4-5-20251001 = cheapest, great for very high volume
+# claude-opus-4-8    = highest quality, pricier
+model: "claude-sonnet-4-6"
+research_websites: true   # fetch each company's site to personalise the opener

@@ -3,3 +3,5 @@ marketing-skills-knowledge.zip
 *.zip
 t.txt
 lyon-scale-preview.html
+__pycache__/
+cold-email-agent/out/
