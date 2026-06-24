@@ -38,15 +38,20 @@ Every task below serves one of these. The five highest-impact items for enquirie
 
 ## B. Categories (biggest ranking factor)
 
-- [ ] **Primary category:** `General contractor`
-- [ ] **Secondary categories** (add all that apply):
-  - `Building restoration service`
-  - `Painter`
+The category is NOT a keyword customers type — it tells Google which searches to show us for. Lyon is a **renovation/refurbishment specialist**, not a heavy builder (we don't do new builds, groundworks or extensions). So the primary must be renovation-specific, not the vague "General contractor" (which dumps us in with the new-build firms we can't out-rank).
+
+- [ ] **Primary category:** `Remodeler`
+  - In the category field, type `remodel`, `renovat`, `refurbish` and pick the most renovation-specific option Google offers (e.g. "Remodeler" / "Home Remodeler" / "Building renovator").
+  - **Fallback only if no renovation-specific category exists:** `General contractor`.
+- [ ] **Secondary categories** (these still catch "builder" searches):
+  - `General contractor`
+  - `Construction company`
   - `Bathroom remodeler`
   - `Kitchen remodeler`
+  - `Painter`
   - `Plasterer`
 
-> Only add categories for work we genuinely do. The primary category drives the most traffic.
+> Only add categories for work we genuinely do. The primary category drives the most traffic — keep it specific to renovation.
 
 ## C. Address & service area
 
