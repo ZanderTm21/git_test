@@ -128,7 +128,9 @@ h3 { font-size: clamp(1.3rem, 4vw, 1.6rem); }
   border-bottom-color: var(--line);
 }
 .logo { display: flex; align-items: center; }
-.logo-img { height: 62px; width: auto; }
+.logo-img { height: 58px; width: auto; }
+.footer-logo { height: 64px; width: auto; margin-bottom: .6rem; }
+@media (min-width: 820px) { .logo-img { height: 68px; } }
 .logo-img + .logo-text { display: none; }
 .logo-text {
   display: inline-flex;

@@ -1,4 +1,4 @@
-# Lyon Renovations – Bathrooms landing page
+# Rosinetti Stone – Bathrooms landing page
 
 Single-page, mobile-first landing page (plain HTML/CSS/JS, no build step). Open `index.html` in a browser to view it.
 
