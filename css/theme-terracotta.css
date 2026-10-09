@@ -1,0 +1,54 @@
+/* Light terracotta theme, matched to the Rosinetti monogram logo.
+   Loaded after style.css; only overrides colours and a few surfaces. */
+:root {
+  --bg: #f4efe9;
+  --bg-alt: #ebe3d9;
+  --surface: #fbf8f4;
+  --line: #ddd0c3;
+  --text: #3a2a21;
+  --muted: #7b685c;
+  --gold: #b4603e;
+  --gold-light: #c97b57;
+  --gold-grad: linear-gradient(100deg, #c97b57 0%, #b4603e 55%, #9a4e30 100%);
+}
+
+h1, h2, h3 { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 400; letter-spacing: .04em; }
+
+/* Header: solid cream bar, logo sits on it rather than over the photo */
+.site-header,
+.site-header.scrolled { background: rgba(244, 239, 233, .97); border-bottom-color: var(--line); }
+.logo-img { height: 64px; }
+@media (min-width: 820px) { .logo-img { height: 74px; } }
+.icon-btn { background: var(--surface); border-color: rgba(180, 96, 62, .45); }
+.hero { margin-top: 0; min-height: calc(100svh - var(--header-h)); }
+
+/* Hero keeps light text over a darkened photo */
+.hero::after { background: linear-gradient(180deg, rgba(40,26,18,.1) 0%, rgba(40,26,18,.35) 45%, rgba(40,26,18,.88) 100%); }
+.hero h1, .hero .eyebrow-light, .hero .trust-reviews { color: #fbf6f0; }
+.hero .stars, .hero .trust-badges { color: #f0c9a8; }
+.hero .btn-outline { background: rgba(40, 26, 18, .35); color: #fbf6f0; border-color: rgba(251, 246, 240, .6); }
+
+/* Buttons */
+.btn-gold { color: #fff8f2; box-shadow: 0 10px 30px -12px rgba(180, 96, 62, .6); }
+.btn-gold:hover { box-shadow: 0 14px 34px -12px rgba(180, 96, 62, .8); }
+.btn-outline { background: var(--surface); color: var(--text); border-color: rgba(180, 96, 62, .5); }
+
+/* Image placeholders */
+.img-slot { background-color: #e4d9cd; background-image: var(--img), repeating-linear-gradient(45deg, #e6dccf 0 14px, #ded2c4 14px 28px); }
+.img-slot::before { color: #a48f7e; }
+.ba-img.img-slot:not(.has-img) { background-image: repeating-linear-gradient(45deg, #e8c9b6 0 14px, #e0bba5 14px 28px); }
+.ba-before.img-slot:not(.has-img) { background-image: repeating-linear-gradient(-45deg, #cfcac4 0 14px, #c4beb7 14px 28px); }
+.ba-img.img-slot:not(.has-img)::before { color: #9a4e30; }
+.ba-before.img-slot:not(.has-img)::before { color: #6f6a64; }
+.ba-tag { background: rgba(251, 248, 244, .9); color: var(--text); }
+.ba-divider::after { color: #fff8f2; }
+
+/* Image bands become light with dark text */
+.band::after { background: rgba(244, 239, 233, .86); }
+
+.footer-legal { color: #9b8a7e; }
+.sticky-bar { background: rgba(244, 239, 233, .97); border-top-color: rgba(180, 96, 62, .35); }
+.modal-backdrop { background: rgba(58, 42, 33, .45); }
+.modal-box { background: var(--surface); }
+.quote-form input, .quote-form select { background: #fff; }
+.footer-logo { height: 150px; }

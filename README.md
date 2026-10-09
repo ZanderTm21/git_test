@@ -5,6 +5,8 @@ Single-page, mobile-first landing page (plain HTML/CSS/JS, no build step). Open 
 - `index.html` – page structure and copy
 - `css/style.css` – theme (colours and fonts at the top in `:root`)
 - `js/main.js` – sticky header/bar, before/after sliders, quote pop-up
+- `css/theme-terracotta.css` – light cream & terracotta theme (matches the monogram logo)
+- `tools/build_previews.py` – builds `preview-dark.html` and `preview-terracotta.html`, single files you can send on WhatsApp
 - `images/` – drop photos and logo here (see `images/README.md` for file names)
 
 Visiting `index.html#quote` opens the quote form directly.

@@ -4,11 +4,13 @@ Drop files here using these exact names. Until a file is added, the site shows i
 
 | File | Where it appears | Suggested size |
 |---|---|---|
-| `logo.png` | Header (transparent PNG; replaces the text logo automatically) | ~400px wide |
+| `logo.png` | Header/footer logo, dark version | ~640px wide |
+| `logo-rosinetti.png` / `logo-rosinetti-full.png` | Header / footer logo, terracotta version | done |
 | `hero.jpg` | Full-screen hero background | 1600×2000 (portrait works best on mobile) |
 | `project-1-before.jpg` / `project-1-after.jpg` | Before & after slider 1 | 1200×900 |
 | `project-2-before.jpg` / `project-2-after.jpg` | Before & after slider 2 | 1200×900 |
 | `project-3-before.jpg` / `project-3-after.jpg` | Before & after slider 3 | 1200×900 |
+| `gallery-1.jpg` … `gallery-6.jpg` | "Recently completed" gallery (1st is the large one) | 1200×1500 (1st: 1600×1000) |
 | `finance-bg.jpg` | "Spread the cost" background | 1600×1000 |
 | `cta-bg.jpg` | Final call-to-action background | 1600×1000 |
 
