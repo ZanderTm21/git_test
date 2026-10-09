@@ -216,6 +216,16 @@ h3 { font-size: clamp(1.3rem, 4vw, 1.6rem); }
 }
 .ba-img { position: absolute; inset: 0; }
 .ba-before { clip-path: inset(0 calc(100% - var(--pos)) 0 0); }
+/* Distinct placeholders so the slider visibly changes before real photos are added */
+.ba-img.img-slot:not(.has-img) {
+  background-image: repeating-linear-gradient(45deg, #2a2620 0 14px, #332d22 14px 28px);
+}
+.ba-before.img-slot:not(.has-img) {
+  background-image: repeating-linear-gradient(-45deg, #3a3d42 0 14px, #45484e 14px 28px);
+}
+.ba-img.img-slot:not(.has-img)::before { content: "AFTER PHOTO"; color: #8a7444; font-size: .8rem; letter-spacing: .2em; white-space: nowrap; left: 75%; }
+.ba-before.img-slot:not(.has-img)::before { content: "BEFORE PHOTO"; color: #8d9096; left: 25%; }
+.ba-hint { color: var(--gold); font-size: .85rem; letter-spacing: .2em; text-transform: uppercase; margin-top: .4rem; }
 .ba-divider {
   position: absolute; top: 0; bottom: 0;
   left: var(--pos);

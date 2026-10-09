@@ -21,7 +21,31 @@ document.querySelectorAll('.ba-compare').forEach((box) => {
   range.addEventListener('input', () => set(range.value));
   box.addEventListener('pointerdown', (e) => { box.setPointerCapture(e.pointerId); fromPointer(e); });
   box.addEventListener('pointermove', (e) => { if (box.hasPointerCapture(e.pointerId)) fromPointer(e); });
+  // Fallback for older in-app browsers without pointer events
+  if (!window.PointerEvent) {
+    box.addEventListener('touchstart', (e) => fromPointer(e.touches[0]), { passive: true });
+    box.addEventListener('touchmove', (e) => fromPointer(e.touches[0]), { passive: true });
+  }
 });
+
+// Nudge each slider once when it comes into view, so people see it can move
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (!entry.isIntersecting) return;
+      io.unobserve(entry.target);
+      const box = entry.target;
+      const start = performance.now();
+      const step = (t) => {
+        const k = Math.min(1, (t - start) / 1400);
+        box.style.setProperty('--pos', (50 + Math.sin(k * Math.PI * 2) * 22).toFixed(1) + '%');
+        if (k < 1) requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }, { threshold: 0.6 });
+  document.querySelectorAll('.ba-compare').forEach((box) => io.observe(box));
+}
 
 // Quote modal
 const modal = document.getElementById('quote-modal');
