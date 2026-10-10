@@ -2,7 +2,8 @@
 
     python3 tools/build_previews.py
 
-Writes preview-dark.html (black & gold) and preview-terracotta.html (cream & terracotta)
+Writes preview-gold.html (black & gold, monogram logo), preview-dark.html (black & gold,
+first logo) and preview-terracotta.html (cream & terracotta)
 in the repo root. Photos stay as links to images/ so the files remain small.
 """
 import base64
@@ -37,4 +38,10 @@ def build(theme_css=None, header_logo="images/logo.png", footer_logo="images/log
     footer_logo="images/logo-rosinetti-full.png",
     fonts="Cormorant+Garamond:wght@400;500",
 ))
-print("built preview-dark.html, preview-terracotta.html")
+(ROOT / "preview-gold.html").write_text(build(
+    theme_css="css/theme-gold.css",
+    header_logo="images/logo-rosinetti-gold.png",
+    footer_logo="images/logo-rosinetti-full-gold.png",
+    fonts="Cormorant+Garamond:wght@300;400;500",
+))
+print("built preview-gold.html, preview-dark.html, preview-terracotta.html")

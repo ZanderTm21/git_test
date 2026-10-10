@@ -1,0 +1,7 @@
+/* Black & gold theme with the Rosinetti monogram logo.
+   Loaded after style.css: keeps the dark palette, adds the serif headings from the logo. */
+h1, h2, h3 { font-family: "Cormorant Garamond", Georgia, serif; font-weight: 400; letter-spacing: .04em; }
+h1 { font-weight: 300; }
+.logo-img { height: 64px; }
+@media (min-width: 820px) { .logo-img { height: 74px; } }
+.footer-logo { height: 150px; }
