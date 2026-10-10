@@ -425,3 +425,25 @@ h3 { font-size: clamp(1.3rem, 4vw, 1.6rem); }
   .footer-grid { grid-template-columns: 2fr 1fr 1fr; }
   .sticky-bar { display: none; }
 }
+
+/* ===== Motion ===== */
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } }
+.hero-inner > * { animation: rise .9s cubic-bezier(.2, .7, .2, 1) both; }
+.hero-inner > :nth-child(1) { animation-delay: .1s; }
+.hero-inner > :nth-child(2) { animation-delay: .25s; }
+.hero-inner > :nth-child(3) { animation-delay: .5s; }
+.hero-inner > :nth-child(4) { animation-delay: .65s; }
+
+/* Scroll reveal: JS adds .pre only to elements that start below the fold */
+.reveal { transition: opacity .8s ease, transform .8s cubic-bezier(.2, .7, .2, 1); transition-delay: var(--d, 0s); }
+.reveal.pre { opacity: 0; transform: translateY(36px); }
+
+.card, .gallery-item, .review { transition: transform .35s ease, box-shadow .35s ease, border-color .2s; }
+.card:hover, .review:hover { transform: translateY(-4px); box-shadow: 0 18px 40px -24px rgba(0, 0, 0, .45); }
+.gallery-item.has-img { background-size: 100%; transition: background-size .6s ease; }
+.gallery-item.has-img:hover { background-size: 108%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-inner > * { animation: none; }
+  .reveal, .reveal.pre { opacity: 1; transform: none; transition: none; }
+}

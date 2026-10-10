@@ -437,6 +437,28 @@ h3 { font-size: clamp(1.3rem, 4vw, 1.6rem); }
   .sticky-bar { display: none; }
 }
 
+/* ===== Motion ===== */
+@keyframes rise { from { opacity: 0; transform: translateY(24px); } }
+.hero-inner > * { animation: rise .9s cubic-bezier(.2, .7, .2, 1) both; }
+.hero-inner > :nth-child(1) { animation-delay: .1s; }
+.hero-inner > :nth-child(2) { animation-delay: .25s; }
+.hero-inner > :nth-child(3) { animation-delay: .5s; }
+.hero-inner > :nth-child(4) { animation-delay: .65s; }
+
+/* Scroll reveal: JS adds .pre only to elements that start below the fold */
+.reveal { transition: opacity .8s ease, transform .8s cubic-bezier(.2, .7, .2, 1); transition-delay: var(--d, 0s); }
+.reveal.pre { opacity: 0; transform: translateY(36px); }
+
+.card, .gallery-item, .review { transition: transform .35s ease, box-shadow .35s ease, border-color .2s; }
+.card:hover, .review:hover { transform: translateY(-4px); box-shadow: 0 18px 40px -24px rgba(0, 0, 0, .45); }
+.gallery-item.has-img { background-size: 100%; transition: background-size .6s ease; }
+.gallery-item.has-img:hover { background-size: 108%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-inner > * { animation: none; }
+  .reveal, .reveal.pre { opacity: 1; transform: none; transition: none; }
+}
+
 /* Light terracotta theme, matched to the Rosinetti monogram logo.
    Loaded after style.css; only overrides colours and a few surfaces. */
 :root {
@@ -850,6 +872,46 @@ document.querySelectorAll('.img-slot[data-file]').forEach((slot) => {
   img.onload = () => slot.classList.add('has-img');
   img.src = slot.dataset.file;
 });
+
+// ===== Motion =====
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Scroll reveal: sections and their cards slide up as they come into view.
+// Anything already on screen at load stays visible.
+if (!reduceMotion && 'IntersectionObserver' in window) {
+  const groups = ['.section .container > *:not(.card-grid):not(.ba-list):not(.gallery):not(.steps):not(.review-track):not(.faq)',
+    '.card', '.ba-card', '.gallery-item', '.steps li', '.faq details', '.band-inner > *', '.stat'];
+  const revealIO = new IntersectionObserver((entries) => {
+    entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.remove('pre'); revealIO.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  document.querySelectorAll(groups.join(',')).forEach((el) => {
+    el.classList.add('reveal');
+    const i = [...el.parentElement.children].indexOf(el);
+    el.style.setProperty('--d', Math.min(i, 5) * 0.08 + 's');
+    if (el.getBoundingClientRect().top > window.innerHeight) { el.classList.add('pre'); revealIO.observe(el); }
+  });
+}
+
+// Stats count up from 0 the first time they are seen (the final number is in the HTML)
+if (!reduceMotion && 'IntersectionObserver' in window) {
+  const countIO = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      countIO.unobserve(e.target);
+      const el = e.target;
+      const target = parseInt(el.textContent, 10);
+      const suffix = el.textContent.replace(/^\d+/, '');
+      const start = performance.now();
+      const tick = (t) => {
+        const k = Math.min(1, (t - start) / 1600);
+        el.textContent = Math.round(target * (1 - Math.pow(1 - k, 3))) + suffix;
+        if (k < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }, { threshold: 0.6 });
+  document.querySelectorAll('.stat-num').forEach((el) => countIO.observe(el));
+}
 </script>
 </body>
 </html>

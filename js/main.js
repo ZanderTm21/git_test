@@ -85,3 +85,43 @@ document.querySelectorAll('.img-slot[data-file]').forEach((slot) => {
   img.onload = () => slot.classList.add('has-img');
   img.src = slot.dataset.file;
 });
+
+// ===== Motion =====
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// Scroll reveal: sections and their cards slide up as they come into view.
+// Anything already on screen at load stays visible.
+if (!reduceMotion && 'IntersectionObserver' in window) {
+  const groups = ['.section .container > *:not(.card-grid):not(.ba-list):not(.gallery):not(.steps):not(.review-track):not(.faq)',
+    '.card', '.ba-card', '.gallery-item', '.steps li', '.faq details', '.band-inner > *', '.stat'];
+  const revealIO = new IntersectionObserver((entries) => {
+    entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.remove('pre'); revealIO.unobserve(e.target); } });
+  }, { threshold: 0.15 });
+  document.querySelectorAll(groups.join(',')).forEach((el) => {
+    el.classList.add('reveal');
+    const i = [...el.parentElement.children].indexOf(el);
+    el.style.setProperty('--d', Math.min(i, 5) * 0.08 + 's');
+    if (el.getBoundingClientRect().top > window.innerHeight) { el.classList.add('pre'); revealIO.observe(el); }
+  });
+}
+
+// Stats count up from 0 the first time they are seen (the final number is in the HTML)
+if (!reduceMotion && 'IntersectionObserver' in window) {
+  const countIO = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      countIO.unobserve(e.target);
+      const el = e.target;
+      const target = parseInt(el.textContent, 10);
+      const suffix = el.textContent.replace(/^\d+/, '');
+      const start = performance.now();
+      const tick = (t) => {
+        const k = Math.min(1, (t - start) / 1600);
+        el.textContent = Math.round(target * (1 - Math.pow(1 - k, 3))) + suffix;
+        if (k < 1) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  }, { threshold: 0.6 });
+  document.querySelectorAll('.stat-num').forEach((el) => countIO.observe(el));
+}
