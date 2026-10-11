@@ -38,7 +38,12 @@ ed = site / "editor"
 ed.mkdir()
 for f in ["index.php", "api.php", "ai.php", "lib.php", "preview.php", "asset.php", "composer.json", "composer.lock"]:
     shutil.copy2(ROOT / "editor" / f, ed / f)
-subprocess.run(["composer", "install", "--no-dev", "--optimize-autoloader", "--no-interaction", "--quiet"], cwd=ed, check=True)
+subprocess.run(["composer", "install", "--no-dev", "--prefer-dist", "--optimize-autoloader", "--no-interaction", "--quiet"], cwd=ed, check=True)
+# Drop what the libraries don't need at runtime (git history, tests, docs) to keep the upload small.
+for pkg in (ed / "vendor").glob("*/*"):
+    for junk in [".git", ".github", "tests", "docs", "examples", "fixtures", "scripts", "vendor-bin"]:
+        if (pkg / junk).is_dir():
+            shutil.rmtree(pkg / junk)
 for f in ["composer.json", "composer.lock"]:
     (ed / f).unlink()
 data = ed / "data"
