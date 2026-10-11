@@ -153,6 +153,12 @@ function draft_init(): void
 {
     ensure_data_dir();
     if (is_dir(DRAFT_DIR)) {
+        // A draft file that went missing (e.g. deleted by hand) is taken back from the live site.
+        foreach (SITE_FILES as $f) {
+            if (!is_file(DRAFT_DIR . '/' . $f) && is_file(SITE_DIR . '/' . $f)) {
+                write_atomic(DRAFT_DIR . '/' . $f, (string) file_get_contents(SITE_DIR . '/' . $f));
+            }
+        }
         return;
     }
     foreach (SITE_FILES as $f) {

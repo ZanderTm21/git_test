@@ -146,6 +146,9 @@ switch ($action) {
             fail('You don\'t have permission to publish. Ask an admin.', 403);
         }
         with_lock(function () use ($user) {
+            if (trim(read_files(DRAFT_DIR)['index.html']) === '') {
+                fail('The draft page is empty, so nothing was published. Use Discard changes or ask for help.');
+            }
             $id = new_id();
             $vdir = DATA_DIR . '/versions/' . $id;
             // Keep a copy of what is live now, so it can be restored.
