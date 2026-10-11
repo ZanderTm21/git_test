@@ -320,6 +320,18 @@ function csrf_ok(?string $token): bool
     return is_string($token) && hash_equals(csrf_token(), $token);
 }
 
+/**
+ * True when a form was posted from this same site (browser-supplied Origin/Referer).
+ * Used for the sign-in and setup forms so they keep working on hosts where the session cookie
+ * isn't set yet; the editor's actions still require the session's CSRF token.
+ */
+function same_origin_post(): bool
+{
+    $host = strtolower($_SERVER['HTTP_HOST'] ?? '');
+    $src = $_SERVER['HTTP_ORIGIN'] ?? ($_SERVER['HTTP_REFERER'] ?? '');
+    return $host !== '' && $src !== '' && strtolower((string) parse_url($src, PHP_URL_HOST)) === explode(':', $host)[0];
+}
+
 function h(string $s): string
 {
     return htmlspecialchars($s, ENT_QUOTES, 'UTF-8');

@@ -7,6 +7,9 @@ require_once __DIR__ . '/lib.php';
 ensure_data_dir();
 start_session();
 header('X-Frame-Options: SAMEORIGIN');
+// Never let a host or CDN cache this page: a cached copy would carry someone else's form token.
+header('Cache-Control: no-store, no-cache, must-revalidate, private');
+header('Pragma: no-cache');
 header('Referrer-Policy: same-origin');
 
 $error = '';
@@ -14,7 +17,7 @@ $noUsers = count(users()) === 0;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form = $_POST['form'] ?? '';
-    if (!csrf_ok($_POST['csrf'] ?? null)) {
+    if (!same_origin_post() && !csrf_ok($_POST['csrf'] ?? null)) {
         $error = 'The page expired. Try again.';
     } elseif ($form === 'setup' && $noUsers) {
         $setup = load_php('setup.php');
