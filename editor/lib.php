@@ -237,8 +237,8 @@ function start_session(): void
     session_name('rosinetti_editor');
     session_set_cookie_params([
         'lifetime' => 0,
-        // Encoded, so folders with spaces ("Website Editor") still match the URL the browser uses.
-        'path' => implode('/', array_map('rawurlencode', explode('/', rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/editor/index.php'), '/')))) . '/',
+        // Site-wide path: works whatever folder the editor sits in (spaces, capitals, rewrites).
+        'path' => '/',
         'secure' => $https,
         'httponly' => true,
         'samesite' => 'Strict',
