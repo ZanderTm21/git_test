@@ -15,3 +15,9 @@ Visiting `index.html#quote` opens the quote form directly.
 - Phone number: search for `07000000000` / `07000 000000`
 - Town names, reviews, FAQ answers, areas covered
 - Quote form: connect to an email/CRM handler (see the TODO in `index.html` and `js/main.js`)
+
+## AI editor (editor/)
+A private, password-protected page at `/editor/` on the live site: people you add type changes in a chat,
+Claude edits the site files, they see a live preview of the draft, and publish when happy (with undo and
+a version history). Admins manage who has access. Build the Hostinger upload with
+`python3 tools/build_hostinger.py OUT_DIR` (installs the Anthropic PHP SDK and prints a one-time setup code).
