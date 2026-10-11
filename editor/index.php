@@ -227,7 +227,7 @@ dialog form { display: grid; gap: 14px; }
     <p class="muted">Only people listed here can sign in. Admins can manage users and settings; others can edit, and publish only if allowed.</p>
     <ul class="list" id="user-list"></ul>
     <form id="user-form">
-      <label class="field"><span>Username</span><input id="u_name" type="text" required></label>
+      <label class="field"><span>Username</span><input id="u_name" type="text" required autocomplete="off"></label>
       <label class="field"><span>Password (10+ characters, leave empty to keep it)</span><input id="u_pass" type="password" autocomplete="new-password"></label>
       <label class="field"><span>Role</span><select id="u_role"><option value="editor">Editor</option><option value="admin">Admin</option></select></label>
       <label><input id="u_pub" type="checkbox"> Can publish</label>
@@ -247,8 +247,12 @@ dialog form { display: grid; gap: 14px; }
       <div><button class="btn btn-gold" type="submit">Save</button> <button class="btn" type="button" data-close>Close</button></div>
     </form>
   </dialog>
+  <dialog id="dlg-confirm"><h2 id="confirm-title">Are you sure?</h2>
+    <p id="confirm-text" class="muted"></p>
+    <div><button class="btn btn-gold" id="confirm-yes" type="button">Yes</button> <button class="btn" id="confirm-no" type="button">Cancel</button></div>
+  </dialog>
   <dialog id="dlg-account"><h2>Change password</h2>
-    <form id="account-form">
+    <form id="account-form"><input type="text" autocomplete="username" hidden aria-hidden="true">
       <label class="field"><span>Current password</span><input id="a_old" type="password" required autocomplete="current-password"></label>
       <label class="field"><span>New password (10+ characters)</span><input id="a_new" type="password" required minlength="10" autocomplete="new-password"></label>
       <div><button class="btn btn-gold" type="submit">Change password</button> <button class="btn" type="button" data-close>Close</button></div>
@@ -277,6 +281,19 @@ function toast(text) {
   const t = document.createElement('div');
   t.className = 'toast'; t.textContent = text; t.setAttribute('role', 'status');
   document.body.appendChild(t); setTimeout(() => t.remove(), 4000);
+}
+
+// Confirmation inside the page (the browser's own confirm box can be switched off by the user).
+function ask(title, text, yesLabel) {
+  return new Promise((resolve) => {
+    const d = $('dlg-confirm');
+    $('confirm-title').textContent = title; $('confirm-text').textContent = text; $('confirm-yes').textContent = yesLabel;
+    const done = (v) => { d.close(); resolve(v); };
+    $('confirm-yes').onclick = () => done(true);
+    $('confirm-no').onclick = () => done(false);
+    d.oncancel = () => resolve(false);
+    d.showModal();
+  });
 }
 
 function time(ts) { return new Date(ts * 1000).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
@@ -332,7 +349,7 @@ function renderAdmin(s) {
     actions.appendChild(edit);
     if (u.name !== s.user.name) {
       const del = document.createElement('button'); del.className = 'btn btn-danger'; del.type = 'button'; del.textContent = 'Remove';
-      del.onclick = async () => { if (!confirm('Remove ' + u.name + '? They will be signed out.')) return; try { render(await api('user_delete', { name: u.name })); toast('Removed ' + u.name); } catch (e) { toast(e.message); } };
+      del.onclick = async () => { if (!(await ask('Remove ' + u.name + '?', 'They will be signed out and can no longer use the editor.', 'Remove'))) return; try { render(await api('user_delete', { name: u.name })); toast('Removed ' + u.name); } catch (e) { toast(e.message); } };
       actions.append(' ', del);
     }
     li.append(label, actions); ul.appendChild(li);
@@ -378,12 +395,15 @@ $('message').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ct
 
 $('undo').onclick = async () => { try { render(await api('undo')); reloadPreview(); } catch (e) { toast(e.message); } };
 $('discard').onclick = async () => {
-  if (!confirm('Throw away all unpublished changes? The draft will match the live site again.')) return;
+  if (!(await ask('Discard unpublished changes?', 'The draft will match the live site again. You can still undo this.', 'Discard'))) return;
   try { render(await api('discard')); reloadPreview(); } catch (e) { toast(e.message); }
 };
 $('publish').onclick = async () => {
-  if (!confirm('Publish the draft? Visitors will see these changes right away.')) return;
-  try { render(await api('publish')); toast('Published. The live site is updated.'); } catch (e) { toast(e.message); }
+  if (!(await ask('Publish the draft?', 'Visitors will see these changes right away.', 'Publish'))) return;
+  const btn = $('publish'); btn.disabled = true; btn.textContent = 'Publishing…';
+  try { render(await api('publish')); toast('Published. The live site is updated.'); }
+  catch (e) { toast(e.message); try { render(await api('state')); } catch (e2) {} }
+  finally { btn.textContent = 'Publish'; }
 };
 
 $('photo-form').addEventListener('submit', async (e) => {
