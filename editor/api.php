@@ -45,6 +45,7 @@ function state(array $user): array
         'canUndo' => count(list_ids(DATA_DIR . '/history')) > 0,
         'slots' => IMAGE_SLOTS,
         'draftImages' => draft_images(),
+        'editableImages' => editable_images(),
         'hasKey' => !empty(load_php('config.php')['api_key']),
     ];
     if ($user['role'] === 'admin') {
@@ -125,6 +126,12 @@ switch ($action) {
             $dir = DATA_DIR . '/history/' . $ids[0];
             write_files(DRAFT_DIR, read_files($dir));
             $meta = json_decode((string) @file_get_contents($dir . '/meta.json'), true) ?: [];
+            foreach (($meta['images'] ?? []) as $f => $existed) {
+                if (!valid_image_name((string) $f)) {
+                    continue;
+                }
+                $existed ? copy($dir . '/images/' . $f, DRAFT_DIR . '/images/' . $f) : @unlink(DRAFT_DIR . '/images/' . $f);
+            }
             rrmdir($dir);
             chat_add('Editor', 'ai', 'Undone: "' . mb_strimwidth((string) ($meta['label'] ?? 'last change'), 0, 80, '…') . '" (by ' . $user['name'] . ').');
         });
@@ -170,6 +177,57 @@ switch ($action) {
             }
             chat_add('Editor', 'ai', $user['name'] . ' published the changes. They are live now.');
         });
+        out(state($user));
+
+    case 'image_edit':
+        $file = (string) ($in['file'] ?? '');
+        $instruction = trim((string) ($in['instruction'] ?? ''));
+        if (!in_array($file, editable_images(), true)) {
+            fail('Choose a photo to edit.');
+        }
+        if ($instruction === '' || mb_strlen($instruction) > 2000) {
+            fail('Write how the photo should change (up to 2000 characters).');
+        }
+        if (!function_exists('imagecreatefromstring')) {
+            fail('Photo editing needs the GD extension, which is turned off on this server.');
+        }
+        $config = load_php('config.php');
+        if (empty($config['api_key'])) {
+            fail('No Claude API key is set yet. An admin can add it under Settings.');
+        }
+        @set_time_limit(300);
+        @ini_set('memory_limit', '512M');
+        require_once __DIR__ . '/image.php';
+        chat_add($user['name'], 'user', '[Photo ' . $file . '] ' . $instruction);
+        $src = image_path($file);
+        $before = md5_file($src);
+        try {
+            $plan = ai_image_ops($config, $src, $file, $instruction);
+            $ops = array_values(array_filter($plan['ops'], fn ($o) => in_array($o['op'] ?? '', IMAGE_OPS, true)));
+            $edited = $ops ? apply_image_ops(load_image($src), $ops, strtolower(pathinfo($file, PATHINFO_EXTENSION))) : null;
+        } catch (\Anthropic\Core\Exceptions\AuthenticationException $e) {
+            fail('The Claude API key was rejected. An admin needs to check it under Settings.', 502);
+        } catch (\Anthropic\Core\Exceptions\APIStatusException | \Anthropic\Core\Exceptions\APIConnectionException $e) {
+            fail('Claude is unavailable right now. Try again in a minute.', 503);
+        } catch (RuntimeException $e) {
+            chat_add('Editor', 'ai', $e->getMessage(), ['error' => true]);
+            fail($e->getMessage(), 422);
+        }
+        if ($edited) {
+            $saved = with_lock(function () use ($file, $src, $before, $edited, $instruction, $user) {
+                if (md5_file(image_path($file)) !== $before) {
+                    return false;
+                }
+                snapshot_draft('[Photo ' . $file . '] ' . $instruction, $user['name'], [$file]);
+                @mkdir(DRAFT_DIR . '/images', 0750, true);
+                save_image($edited, DRAFT_DIR . '/images/' . $file);
+                return true;
+            });
+            if (!$saved) {
+                fail('Someone else changed this photo at the same time, so this edit was not applied. Try again.', 409);
+            }
+        }
+        chat_add('Editor', 'ai', (string) $plan['reply'], ['changed' => $edited ? ['images/' . $file] : []]);
         out(state($user));
 
     case 'upload':

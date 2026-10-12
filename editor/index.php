@@ -130,6 +130,10 @@ input[type=text], input[type=password], select, textarea { width: 100%; min-heig
 .photos { padding: 12px 16px 16px; border-top: 1px solid var(--line); }
 .photos summary { cursor: pointer; color: var(--gold-2); }
 .photos form { display: grid; gap: 10px; margin-top: 10px; }
+.photos form + form { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 16px; }
+.thumb { width: 100%; max-height: 180px; object-fit: contain; background: repeating-conic-gradient(#222 0 25%, #2c2c30 0 50%) 0 0 / 16px 16px; border-radius: 6px; border: 1px solid var(--line); }
+.small { font-size: .82rem; }
+.photos { max-height: 55vh; overflow-y: auto; }
 .stage { display: grid; grid-template-rows: auto 1fr; min-height: 0; background: #08080a; }
 .stage-bar { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); }
 .frame-wrap { display: flex; justify-content: center; min-height: 0; overflow: auto; padding: 12px; }
@@ -209,6 +213,15 @@ dialog form { display: grid; gap: 14px; }
             <label class="field"><span>Where does it go?</span><select id="slot"></select></label>
             <label class="field"><span>Photo (JPG, PNG or WebP)</span><input id="photo" type="file" accept="image/jpeg,image/png,image/webp" required></label>
             <button class="btn" type="submit">Upload to draft</button>
+          </form>
+          <form id="edit-photo-form">
+            <span class="field"><span>Edit a photo</span></span>
+            <label class="field"><span>Which photo?</span><select id="edit-file"></select></label>
+            <img id="edit-thumb" class="thumb" alt="Selected photo">
+            <label class="field"><span>What should change?</span>
+              <textarea id="edit-text" placeholder="e.g. Crop to the bathtub, make it brighter and a bit warmer"></textarea></label>
+            <button class="btn btn-gold" id="edit-send" type="submit">Edit photo</button>
+            <span class="muted small">Crop, rotate, brightness, contrast, colour, black &amp; white, recolour a logo, remove a plain background. It can't add or remove objects.</span>
           </form>
         </details>
       </section>
@@ -334,6 +347,13 @@ function render(s) {
     o.textContent = label + (s.draftImages.includes(file) ? '  ✓ uploaded' : ''); slot.appendChild(o);
   }
   if (keep) slot.value = keep;
+  const ef = $('edit-file'), keepEf = ef.value; ef.textContent = '';
+  for (const file of s.editableImages) {
+    const o = document.createElement('option'); o.value = file;
+    o.textContent = (s.slots[file] ? s.slots[file] + ' · ' : '') + file; ef.appendChild(o);
+  }
+  if (keepEf && s.editableImages.includes(keepEf)) ef.value = keepEf;
+  updateThumb();
   if (s.users) renderAdmin(s);
 }
 
@@ -412,6 +432,25 @@ $('photo-form').addEventListener('submit', async (e) => {
   const fd = new FormData(); fd.append('photo', file);
   try { render(await api('upload', fd, '&slot=' + encodeURIComponent($('slot').value))); $('photo').value = ''; reloadPreview(); toast('Photo added to the draft.'); }
   catch (err) { toast(err.message); }
+});
+
+function updateThumb() {
+  const f = $('edit-file').value;
+  $('edit-thumb').hidden = !f;
+  if (f) $('edit-thumb').src = 'asset.php?f=' + encodeURIComponent(f) + '&t=' + Date.now();
+}
+$('edit-file').addEventListener('change', updateThumb);
+$('edit-photo-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = $('edit-text').value.trim(); if (!text) return;
+  const btn = $('edit-send'); btn.disabled = true;
+  const started = Date.now();
+  const timer = setInterval(() => { btn.textContent = 'Editing… ' + Math.round((Date.now() - started) / 1000) + 's'; }, 1000);
+  try {
+    render(await api('image_edit', { file: $('edit-file').value, instruction: text }));
+    $('edit-text').value = ''; reloadPreview(); toast('Photo updated in the draft.');
+  } catch (err) { toast(err.message); try { render(await api('state')); } catch (e2) {} }
+  finally { clearInterval(timer); btn.disabled = false; btn.textContent = 'Edit photo'; }
 });
 
 $('view-desktop').onclick = () => $('frame-wrap').classList.remove('phone');

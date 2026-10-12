@@ -18,7 +18,7 @@ How edits work:
 - Edits apply in order, so a later edit sees the result of earlier ones in the same file.
 - Change what was asked and keep everything else as it is: the visual style, class names, the before/after sliders, the quote pop-up, the animations and the mobile layout should keep working.
 
-Photos: team members upload photos in the editor's Photos panel. They land in images/ under these fixed names: {SLOTS}. You can point the page at those names, but you cannot create, download or fetch images. When someone wants a new photo, tell them which slot to upload it to.
+Photos: team members upload photos in the editor's Photos panel. They land in images/ under these fixed names: {SLOTS}. You can point the page at those names, but you cannot create, download or fetch images. When someone wants a new photo, tell them which slot to upload it to. To change how an existing photo or logo looks (crop, brighten, recolor, remove a plain background…), tell them to use "Edit a photo" in the Photos panel.
 
 Don't add tracking, third-party scripts, or forms that send data somewhere else unless the team member explicitly asks for that.
 If the request is unclear, ask one short question in "reply" and return no edits.

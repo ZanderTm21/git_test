@@ -195,7 +195,38 @@ function draft_images(): array
     if (!is_dir($dir)) {
         return [];
     }
-    return array_values(array_filter(scandir($dir), fn ($f) => isset(IMAGE_SLOTS[$f])));
+    return array_values(array_filter(scandir($dir), 'valid_image_name'));
+}
+
+function valid_image_name(string $f): bool
+{
+    return (bool) preg_match('/^[A-Za-z0-9._-]+\.(jpe?g|png|webp)$/i', $f) && $f[0] !== '.';
+}
+
+/** Every site image that can be edited: live images plus anything already in the draft. Newest copy wins. */
+function editable_images(): array
+{
+    $names = [];
+    foreach ([SITE_DIR . '/images', DRAFT_DIR . '/images'] as $dir) {
+        foreach (is_dir($dir) ? scandir($dir) : [] as $f) {
+            if (valid_image_name($f) && is_file($dir . '/' . $f)) {
+                $names[$f] = true;
+            }
+        }
+    }
+    ksort($names);
+    return array_keys($names);
+}
+
+/** Path of the current version of an image: the draft's if it has one, otherwise the live one. */
+function image_path(string $f): ?string
+{
+    foreach ([DRAFT_DIR . '/images/' . $f, SITE_DIR . '/images/' . $f] as $p) {
+        if (valid_image_name($f) && is_file($p)) {
+            return $p;
+        }
+    }
+    return null;
 }
 
 /** True when the draft differs from what is live. */
@@ -214,12 +245,22 @@ function draft_dirty(): bool
 }
 
 /** Save the draft's text files before a change, so it can be undone. */
-function snapshot_draft(string $label, string $user): void
+function snapshot_draft(string $label, string $user, array $images = []): void
 {
     $id = new_id();
     $dir = DATA_DIR . '/history/' . $id;
     write_files($dir, read_files(DRAFT_DIR));
-    file_put_contents($dir . '/meta.json', json_encode(['label' => $label, 'by' => $user, 'at' => time()]));
+    // For images about to change, remember the draft copy (or that there was none) so Undo can put it back.
+    $imgMeta = [];
+    foreach ($images as $f) {
+        $src = DRAFT_DIR . '/images/' . $f;
+        $imgMeta[$f] = is_file($src);
+        if ($imgMeta[$f]) {
+            @mkdir($dir . '/images', 0750, true);
+            copy($src, $dir . '/images/' . $f);
+        }
+    }
+    file_put_contents($dir . '/meta.json', json_encode(['label' => $label, 'by' => $user, 'at' => time(), 'images' => $imgMeta]));
     prune_dirs(DATA_DIR . '/history', KEEP_HISTORY);
 }
 

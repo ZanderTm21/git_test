@@ -36,7 +36,7 @@ for rel in ["css/style.css", "css/theme-gold.css", "js/main.js",
 # Editor
 ed = site / "editor"
 ed.mkdir()
-for f in ["index.php", "api.php", "ai.php", "lib.php", "preview.php", "asset.php", "composer.json", "composer.lock"]:
+for f in ["index.php", "api.php", "ai.php", "image.php", "lib.php", "preview.php", "asset.php", "composer.json", "composer.lock"]:
     shutil.copy2(ROOT / "editor" / f, ed / f)
 subprocess.run(["composer", "install", "--no-dev", "--prefer-dist", "--optimize-autoloader", "--no-interaction", "--quiet"], cwd=ed, check=True)
 # Drop what the libraries don't need at runtime (git history, tests, docs) to keep the upload small.
