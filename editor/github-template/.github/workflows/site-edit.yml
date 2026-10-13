@@ -67,7 +67,7 @@ jobs:
         run: |
           umask 0000  # files Claude writes stay editable by the Python sandbox
           export PATH="/opt/sitetools/bin:$PATH"  # Claude's commands go through the sandbox wrappers
-          claude -p "Handle the change request in .request.md by following CLAUDE.md. Write your reply to the team member in .reply.md." \
+          claude -p "Handle the change request in .request.md by following CLAUDE.md. Write your reply to the team member in .reply.md. Create scripts with the Write tool and run them with python3 in a separate Bash call; never use shell redirection or heredocs." \
             --allowedTools "Read" "Edit" "Write" "Bash(cd:*)" \
               "Bash(python3:*)" "Bash(python:*)" "Bash(sitepy:*)" "Bash(siteimg:*)" \
               "Bash(grep:*)" "Bash(egrep:*)" "Bash(head:*)" "Bash(tail:*)" "Bash(cat:*)" "Bash(wc:*)" \
