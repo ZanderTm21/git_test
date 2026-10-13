@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: site-draft
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
 
       - uses: actions/setup-node@v4
@@ -102,7 +102,13 @@ jobs:
             echo "No file changes."
           else
             git commit -m "Site edit #${{ github.event.issue.number }}"
-            git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" HEAD:site-draft
+            remote="https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
+            # The editor may have synced the draft while Claude worked: put this edit on top of that and retry.
+            for try in 1 2 3; do
+              git push "$remote" HEAD:site-draft && exit 0
+              git pull --rebase "$remote" site-draft
+            done
+            exit 1
           fi
 
       - name: Reply and close
