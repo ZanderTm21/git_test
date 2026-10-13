@@ -43,6 +43,7 @@ function state(array $user): array
         'chat' => array_slice(load_json('chat.json'), -60),
         'dirty' => draft_dirty(),
         'canUndo' => count(list_ids(DATA_DIR . '/history')) > 0,
+        'canRedo' => count(list_ids(DATA_DIR . '/redo')) > 0,
         'slots' => IMAGE_SLOTS,
         'draftImages' => draft_images(),
         'editableImages' => editable_images(),
@@ -128,22 +129,14 @@ switch ($action) {
         out(state($user));
 
     case 'undo':
-        with_lock(function () use ($user) {
-            $ids = list_ids(DATA_DIR . '/history');
-            if (!$ids) {
-                fail('There is nothing to undo.');
+    case 'redo':
+        with_lock(function () use ($user, $action) {
+            [$from, $to] = $action === 'undo' ? ['history', 'redo'] : ['redo', 'history'];
+            $meta = step_draft(DATA_DIR . '/' . $from, DATA_DIR . '/' . $to, $user['name']);
+            if ($meta === null) {
+                fail($action === 'undo' ? 'There is nothing to undo.' : 'There is nothing to redo.');
             }
-            $dir = DATA_DIR . '/history/' . $ids[0];
-            write_files(DRAFT_DIR, read_files($dir));
-            $meta = json_decode((string) @file_get_contents($dir . '/meta.json'), true) ?: [];
-            foreach (($meta['images'] ?? []) as $f => $existed) {
-                if (!valid_image_name((string) $f)) {
-                    continue;
-                }
-                $existed ? copy($dir . '/images/' . $f, DRAFT_DIR . '/images/' . $f) : @unlink(DRAFT_DIR . '/images/' . $f);
-            }
-            rrmdir($dir);
-            chat_add('Editor', 'ai', 'Undone: "' . mb_strimwidth((string) ($meta['label'] ?? 'last change'), 0, 80, '…') . '" (by ' . $user['name'] . ').');
+            chat_add('Editor', 'ai', ($action === 'undo' ? 'Undone' : 'Redone') . ': "' . mb_strimwidth((string) ($meta['label'] ?? 'last change'), 0, 80, '…') . '" (by ' . $user['name'] . ').');
         });
         out(state($user));
 

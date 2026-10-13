@@ -31,7 +31,7 @@ define('DRAFT_DIR', DATA_DIR . '/draft');
 
 function ensure_data_dir(): void
 {
-    foreach ([DATA_DIR, DATA_DIR . '/history', DATA_DIR . '/versions'] as $d) {
+    foreach ([DATA_DIR, DATA_DIR . '/history', DATA_DIR . '/redo', DATA_DIR . '/versions'] as $d) {
         if (!is_dir($d)) {
             mkdir($d, 0750, true);
         }
@@ -125,7 +125,9 @@ function rrmdir(string $dir): void
 
 function new_id(): string
 {
-    return date('Ymd-His') . '-' . bin2hex(random_bytes(3));
+    // Microseconds keep snapshots taken within the same second in order (Undo/Redo rely on it).
+    $t = microtime(true);
+    return date('Ymd-His', (int) $t) . '-' . sprintf('%06d', (int) (fmod($t, 1) * 1e6)) . '-' . bin2hex(random_bytes(3));
 }
 
 function prune_dirs(string $parent, int $keep): void
@@ -244,11 +246,20 @@ function draft_dirty(): bool
     return false;
 }
 
-/** Save the draft's text files before a change, so it can be undone. */
+/** Save the draft's text files before a change, so it can be undone. A new change ends the Redo chain. */
 function snapshot_draft(string $label, string $user, array $images = []): void
 {
+    save_snapshot(DATA_DIR . '/history', $label, $user, $images);
+    foreach (list_ids(DATA_DIR . '/redo') as $id) {
+        rrmdir(DATA_DIR . '/redo/' . $id);
+    }
+}
+
+/** Stores the draft's text files (and the listed images) as a new snapshot under $parent. */
+function save_snapshot(string $parent, string $label, string $user, array $images = []): void
+{
     $id = new_id();
-    $dir = DATA_DIR . '/history/' . $id;
+    $dir = $parent . '/' . $id;
     write_files($dir, read_files(DRAFT_DIR));
     // For images about to change, remember the draft copy (or that there was none) so Undo can put it back.
     $imgMeta = [];
@@ -261,7 +272,29 @@ function snapshot_draft(string $label, string $user, array $images = []): void
         }
     }
     file_put_contents($dir . '/meta.json', json_encode(['label' => $label, 'by' => $user, 'at' => time(), 'images' => $imgMeta]));
-    prune_dirs(DATA_DIR . '/history', KEEP_HISTORY);
+    prune_dirs($parent, KEEP_HISTORY);
+}
+
+/**
+ * Moves the draft one step along Undo or Redo: takes the newest snapshot from $from, saves the current draft to $to
+ * (so the step can be reversed) and restores the snapshot. Returns the snapshot's meta, or null if $from is empty.
+ */
+function step_draft(string $from, string $to, string $user): ?array
+{
+    $ids = list_ids($from);
+    if (!$ids) {
+        return null;
+    }
+    $dir = $from . '/' . $ids[0];
+    $meta = json_decode((string) @file_get_contents($dir . '/meta.json'), true) ?: [];
+    $images = array_values(array_filter(array_keys($meta['images'] ?? []), fn ($f) => valid_image_name((string) $f)));
+    save_snapshot($to, (string) ($meta['label'] ?? 'last change'), $user, $images);
+    write_files(DRAFT_DIR, read_files($dir));
+    foreach ($images as $f) {
+        $meta['images'][$f] ? copy($dir . '/images/' . $f, DRAFT_DIR . '/images/' . $f) : @unlink(DRAFT_DIR . '/images/' . $f);
+    }
+    rrmdir($dir);
+    return $meta;
 }
 
 // ---------- chat log ----------

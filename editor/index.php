@@ -193,6 +193,7 @@ fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; }
       <span class="brand">Rosinetti Editor</span>
       <span id="status" class="pill"></span>
       <button class="btn" id="undo" type="button">Undo</button>
+      <button class="btn" id="redo" type="button">Redo</button>
       <button class="btn" id="discard" type="button">Discard changes</button>
       <button class="btn btn-gold" id="publish" type="button">Publish</button>
       <a class="btn" href="../" target="_blank" rel="noopener">View live site ↗</a>
@@ -359,6 +360,7 @@ function render(s) {
   $('status').textContent = s.dirty ? 'Unpublished changes' : 'Draft matches live site';
   $('status').className = 'pill ' + (s.dirty ? 'dirty' : 'clean');
   $('undo').disabled = !s.canUndo;
+  $('redo').disabled = !s.canRedo;
   $('discard').disabled = !s.dirty;
   $('publish').disabled = !s.dirty || !s.user.can_publish;
   $('publish').title = s.user.can_publish ? '' : 'Ask an admin for permission to publish';
@@ -467,6 +469,7 @@ $('pending-cancel').onclick = async () => {
 $('message').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('compose').requestSubmit(); });
 
 $('undo').onclick = async () => { try { render(await api('undo')); reloadPreview(); } catch (e) { toast(e.message); } };
+$('redo').onclick = async () => { try { render(await api('redo')); reloadPreview(); } catch (e) { toast(e.message); } };
 $('discard').onclick = async () => {
   if (!(await ask('Discard unpublished changes?', 'The draft will match the live site again. You can still undo this.', 'Discard'))) return;
   try { render(await api('discard')); reloadPreview(); } catch (e) { toast(e.message); }
