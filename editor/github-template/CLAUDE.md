@@ -19,8 +19,9 @@ It is a static one-page site. The team edits it from a web editor; each request 
   for that kind of image in `site/index.html`.
 - Edit photos the way a designer would: look at the photo, decide, change it, look at the result, refine.
   - Write your own Python for any image edit (Pillow and numpy are installed): `python3 .work/<name>.py` or
-    `python3 -c "..."`. Python runs in a sandbox from the repository root: it can read and write `site/` and `.work/`,
-    with no network. Look at the output with the Read tool and iterate until it looks right.
+    `python3 -c "..."`. Python and the usual shell commands (grep, head, tail, cat, sed, find, ls, cp, mv…) run in a
+    sandbox from the repository root: they can read and write the site, with no network. Look at the output with
+    the Read tool and iterate until it looks right.
   - For quick standard edits there is also `siteimg site/images/<file> '<json list of ops>' [site/images/<new-name>]`
     (crop, brightness, text, logo watermark, overlay, recolor, remove background…; the list is at the top of
     `tools/edit_image.py`). Fonts for text: /usr/share/fonts/truetype/dejavu/ (DejaVu Sans/Serif, with diacritics).

@@ -24,6 +24,7 @@ jobs:
         with:
           ref: site-draft
           fetch-depth: 1
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
@@ -46,7 +47,13 @@ jobs:
             printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh "$@"\n' | sudo tee /usr/local/bin/$name > /dev/null
           done
           printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh --tool /opt/sitetools/edit_image.py "$@"\n' | sudo tee /usr/local/bin/siteimg > /dev/null
-          sudo chmod 755 /usr/local/bin/python3 /usr/local/bin/python /usr/local/bin/sitepy /usr/local/bin/siteimg
+          # Everyday read/edit commands also run in the sandbox.
+          for name in grep egrep head tail cat wc sort uniq cut tr sed awk find diff file ls mkdir cp mv rm touch stat du; do
+            real="$(command -v $name)"
+            printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh --cmd %s "$@"\n' "$real" | sudo tee /usr/local/bin/$name > /dev/null
+            echo "$name" >> .work/sandboxed-commands
+          done
+          sudo chmod 755 /usr/local/bin/*
 
       - name: Save the request
         env:
@@ -60,9 +67,14 @@ jobs:
         run: |
           umask 0000  # files Claude writes stay editable by the Python sandbox
           claude -p "Handle the change request in .request.md by following CLAUDE.md. Write your reply to the team member in .reply.md." \
-            --allowedTools "Read" "Edit" "Write" "Glob" "Grep" \
+            --allowedTools "Read" "Edit" "Write" "Bash(cd:*)" \
               "Bash(python3:*)" "Bash(python:*)" "Bash(sitepy:*)" "Bash(siteimg:*)" \
-              "Bash(cd:*)" "Bash(ls:*)" "Bash(mkdir:*)" "Bash(file:*)" \
+              "Bash(grep:*)" "Bash(egrep:*)" "Bash(head:*)" "Bash(tail:*)" "Bash(cat:*)" "Bash(wc:*)" \
+              "Bash(sort:*)" "Bash(uniq:*)" "Bash(cut:*)" "Bash(tr:*)" "Bash(sed:*)" "Bash(awk:*)" \
+              "Bash(find:*)" "Bash(diff:*)" "Bash(file:*)" "Bash(ls:*)" "Bash(mkdir:*)" "Bash(cp:*)" \
+              "Bash(mv:*)" "Bash(rm:*)" "Bash(touch:*)" "Bash(stat:*)" "Bash(du:*)" \
+            --disallowedTools "Read(//proc/**)" "Read(//sys/**)" "Read(//root/**)" "Read(//etc/**)" \
+              "Read(~/.claude/**)" "Read(~/.claude.json)" "Read(~/.config/**)" \
             --permission-mode dontAsk \
             --no-session-persistence \
             --output-format stream-json --verbose > .claude-log.jsonl || touch .claude-failed
@@ -77,6 +89,8 @@ jobs:
           jq -r 'select(.type=="result") | "RESULT \(.subtype) turns=\(.num_turns) denials=\(.permission_denials | length)"' .claude-log.jsonl || true
 
       - name: Save the changes
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           test ! -f .claude-failed || { echo "Claude did not finish (see the log above)."; exit 1; }
           git config user.name "site-editor-bot"
@@ -87,7 +101,7 @@ jobs:
             echo "No file changes."
           else
             git commit -m "Site edit #${{ github.event.issue.number }}"
-            git push origin HEAD:site-draft
+            git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git" HEAD:site-draft
           fi
 
       - name: Reply and close
