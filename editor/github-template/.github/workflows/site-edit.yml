@@ -40,20 +40,20 @@ jobs:
           mkdir -p .work
           chmod -R a+rwX site .work
           chmod 700 .git
-          sudo install -d -m 755 /opt/sitetools
+          sudo install -d -m 755 /opt/sitetools /opt/sitetools/bin
           sudo install -m 755 tools/run_python.sh /opt/sitetools/run_python.sh
           sudo install -m 644 tools/edit_image.py /opt/sitetools/edit_image.py
           for name in python3 python sitepy; do
-            printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh "$@"\n' | sudo tee /usr/local/bin/$name > /dev/null
+            printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh "$@"\n' | sudo tee /opt/sitetools/bin/$name > /dev/null
           done
-          printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh --tool /opt/sitetools/edit_image.py "$@"\n' | sudo tee /usr/local/bin/siteimg > /dev/null
+          printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh --tool /opt/sitetools/edit_image.py "$@"\n' | sudo tee /opt/sitetools/bin/siteimg > /dev/null
           # Everyday read/edit commands also run in the sandbox.
           for name in grep egrep head tail cat wc sort uniq cut tr sed awk find diff file ls mkdir cp mv rm touch stat du; do
             real="$(command -v $name)"
-            printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh --cmd %s "$@"\n' "$real" | sudo tee /usr/local/bin/$name > /dev/null
+            printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh --cmd %s "$@"\n' "$real" | sudo tee /opt/sitetools/bin/$name > /dev/null
             echo "$name" >> .work/sandboxed-commands
           done
-          sudo chmod 755 /usr/local/bin/*
+          sudo chmod 755 /opt/sitetools/bin/*
 
       - name: Save the request
         env:
@@ -66,6 +66,7 @@ jobs:
           SITE_WORKSPACE: ${{ github.workspace }}
         run: |
           umask 0000  # files Claude writes stay editable by the Python sandbox
+          export PATH="/opt/sitetools/bin:$PATH"  # Claude's commands go through the sandbox wrappers
           claude -p "Handle the change request in .request.md by following CLAUDE.md. Write your reply to the team member in .reply.md." \
             --allowedTools "Read" "Edit" "Write" "Bash(cd:*)" \
               "Bash(python3:*)" "Bash(python:*)" "Bash(sitepy:*)" "Bash(siteimg:*)" \
