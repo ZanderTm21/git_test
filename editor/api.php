@@ -47,6 +47,11 @@ function state(array $user): array
         'draftImages' => draft_images(),
         'editableImages' => editable_images(),
         'hasKey' => !empty(load_php('config.php')['api_key']),
+        'mode' => (load_php('config.php')['mode'] ?? 'api') === 'github' ? 'github' : 'api',
+        'pending' => (function () {
+            $j = load_json('github_job.json');
+            return $j ? ['by' => $j['by'], 'request' => $j['request'], 'started' => $j['started']] : null;
+        })(),
     ];
     if ($user['role'] === 'admin') {
         $s['users'] = [];
@@ -59,6 +64,8 @@ function state(array $user): array
             $s['versions'][] = ['id' => $id, 'by' => $m['by'] ?? '?', 'at' => $m['at'] ?? 0];
         }
         $s['model'] = load_php('config.php')['model'] ?? DEFAULT_MODEL;
+        $cfg = load_php('config.php');
+        $s['github'] = ['repo' => $cfg['github_repo'] ?? '', 'hasToken' => !empty($cfg['github_token']), 'connected' => !empty($cfg['github_connected'])];
     }
     return $s;
 }
@@ -73,6 +80,9 @@ switch ($action) {
         $request = trim((string) ($in['message'] ?? ''));
         if ($request === '' || mb_strlen($request) > 4000) {
             fail('Write what you want changed (up to 4000 characters).');
+        }
+        if ((load_php('config.php')['mode'] ?? 'api') === 'github') {
+            send_to_github($user, $request);
         }
         $config = load_php('config.php');
         if (empty($config['api_key'])) {
@@ -187,6 +197,9 @@ switch ($action) {
         }
         if ($instruction === '' || mb_strlen($instruction) > 2000) {
             fail('Write how the photo should change (up to 2000 characters).');
+        }
+        if ((load_php('config.php')['mode'] ?? 'api') === 'github') {
+            send_to_github($user, '[Photo images/' . $file . '] ' . $instruction);
         }
         if (!function_exists('imagecreatefromstring')) {
             fail('Photo editing needs the GD extension, which is turned off on this server.');
@@ -327,7 +340,49 @@ switch ($action) {
             }
             $config['model'] = $model;
         }
+        $mode = (string) ($in['mode'] ?? '');
+        if (in_array($mode, ['api', 'github'], true)) {
+            $config['mode'] = $mode;
+        }
+        $repo = trim((string) ($in['github_repo'] ?? ''));
+        if ($repo !== '' && $repo !== ($config['github_repo'] ?? '')) {
+            if (!preg_match('#^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$#', $repo)) {
+                fail('Write the repository as owner/name, for example lyonscale/rosinetti-site.');
+            }
+            $config['github_repo'] = $repo;
+            $config['github_connected'] = false;
+        }
+        $ghToken = trim((string) ($in['github_token'] ?? ''));
+        if ($ghToken !== '') {
+            $config['github_token'] = $ghToken;
+            $config['github_connected'] = false;
+        }
         save_php('config.php', $config);
+        out(state($user));
+
+    case 'github_connect':
+        need_admin($user);
+        require_once __DIR__ . '/github.php';
+        try {
+            with_lock(fn () => gh_connect());
+        } catch (RuntimeException $e) {
+            fail($e->getMessage(), 422);
+        }
+        chat_add('Editor', 'ai', 'GitHub is connected. Requests now go to Claude on the subscription.');
+        out(state($user));
+
+    case 'poll':
+        if (gh_pending_job()) {
+            require_once __DIR__ . '/github.php';
+            try {
+                $res = gh_poll();
+            } catch (RuntimeException $e) {
+                fail($e->getMessage(), 503);
+            }
+            if ($res) {
+                chat_add('Claude', 'ai', $res['reply'], ['changed' => $res['changed']] + ($res['error'] ? ['error' => true] : []));
+            }
+        }
         out(state($user));
 
     case 'restore':
@@ -351,6 +406,38 @@ switch ($action) {
 
     default:
         fail('Unknown action.', 404);
+}
+
+function gh_pending_job(): bool
+{
+    return is_file(DATA_DIR . '/github_job.json');
+}
+
+/** Subscription mode: hand the request to Claude through GitHub, then return right away. */
+function send_to_github(array $user, string $request): never
+{
+    require_once __DIR__ . '/github.php';
+    if (!gh_ready()) {
+        fail('GitHub isn\'t connected yet. An admin can connect it under Settings.');
+    }
+    $recent = array_slice(load_json('chat.json'), -8);
+    try {
+        $sent = with_lock(function () use ($user, $request, $recent) {
+            if (gh_pending_job()) {
+                return false;
+            }
+            gh_submit($user, $request, $recent);
+            return true;
+        });
+    } catch (RuntimeException $e) {
+        fail($e->getMessage(), 503);
+    }
+    if (!$sent) {
+        fail('Claude is still working on the previous request. This one can be sent as soon as it\'s done.', 409);
+    }
+    chat_add($user['name'], 'user', $request);
+    chat_add('Editor', 'ai', 'Sent to Claude. The preview updates here when it\'s done, usually in 1–3 minutes.');
+    out(state($user));
 }
 
 /** Re-encodes the photo as a JPEG (max 2400px, upright), which also strips anything that isn't image data. */

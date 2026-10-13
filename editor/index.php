@@ -146,6 +146,8 @@ dialog h2 { font-size: 1.6rem; margin-bottom: 14px; }
 dialog form { display: grid; gap: 14px; }
 .list { display: grid; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
 .list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--raise); border-radius: 6px; }
+fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; }
+.pending { margin: 0 16px 12px; padding: 10px 12px; border: 1px solid rgba(201,162,74,.45); border-radius: 8px; color: var(--gold-2); font-size: .9rem; }
 .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--raise); border: 1px solid var(--gold); padding: 10px 16px; border-radius: 6px; z-index: 10; max-width: calc(100% - 32px); }
 @media (max-width: 860px) {
   .work { grid-template-columns: 1fr; }
@@ -202,6 +204,7 @@ dialog form { display: grid; gap: 14px; }
     <main class="work" data-tab="chat">
       <section class="side" aria-label="Chat">
         <div class="chat" id="chat" aria-live="polite"></div>
+        <div class="pending" id="pending" hidden aria-live="polite"></div>
         <form class="compose" id="compose">
           <label class="field"><span>What should change?</span>
             <textarea id="message" placeholder="e.g. Change the main title to “Bathrooms built to last” and make the buttons a bit larger"></textarea></label>
@@ -254,9 +257,22 @@ dialog form { display: grid; gap: 14px; }
   </dialog>
   <dialog id="dlg-settings"><h2>Settings</h2>
     <form id="settings-form">
-      <p id="key-status" class="muted"></p>
-      <label class="field"><span>Claude API key (leave empty to keep the current one)</span><input id="s_key" type="password" placeholder="sk-ant-…" autocomplete="off"></label>
-      <label class="field"><span>Model</span><input id="s_model" type="text"></label>
+      <label class="field"><span>How changes are made</span>
+        <select id="s_mode">
+          <option value="api">Claude API (paid per use, fastest)</option>
+          <option value="github">Claude subscription via GitHub (no API costs, 1–3 min)</option>
+        </select></label>
+      <fieldset class="mode-api">
+        <p id="key-status" class="muted"></p>
+        <label class="field"><span>Claude API key (leave empty to keep the current one)</span><input id="s_key" type="password" placeholder="sk-ant-…" autocomplete="off"></label>
+        <label class="field"><span>Model</span><input id="s_model" type="text"></label>
+      </fieldset>
+      <fieldset class="mode-github">
+        <p id="gh-status" class="muted"></p>
+        <label class="field"><span>GitHub repository (owner/name)</span><input id="s_repo" type="text" placeholder="owner/rosinetti-site" autocomplete="off"></label>
+        <label class="field"><span>GitHub access token (leave empty to keep the current one)</span><input id="s_ghtoken" type="password" placeholder="github_pat_…" autocomplete="off"></label>
+        <button class="btn" id="gh-connect" type="button">Connect GitHub</button>
+      </fieldset>
       <div><button class="btn btn-gold" type="submit">Save</button> <button class="btn" type="button" data-close>Close</button></div>
     </form>
   </dialog>
@@ -340,7 +356,12 @@ function render(s) {
   $('publish').title = s.user.can_publish ? '' : 'Ask an admin for permission to publish';
   $('open-account').textContent = s.user.name;
   document.querySelectorAll('.admin-only').forEach((b) => { b.hidden = s.user.role !== 'admin'; });
-  $('hint').textContent = s.hasKey ? 'Ctrl + Enter to send' : 'No Claude API key yet: an admin adds it under Settings.';
+  $('hint').textContent = (s.mode === 'github' || s.hasKey) ? 'Ctrl + Enter to send' : 'No Claude API key yet: an admin adds it under Settings.';
+  const pend = $('pending');
+  pend.hidden = !s.pending;
+  if (s.pending) pend.textContent = 'Claude is working on: "' + s.pending.request.slice(0, 90) + '" (sent by ' + s.pending.by + '). The preview updates when it\'s done.';
+  $('send').disabled = !!s.pending; $('edit-send').disabled = !!s.pending;
+  schedulePoll(!!s.pending);
   const slot = $('slot'), keep = slot.value; slot.textContent = '';
   for (const [file, label] of Object.entries(s.slots)) {
     const o = document.createElement('option'); o.value = file;
@@ -384,6 +405,10 @@ function renderAdmin(s) {
     li.append(label, b); vl.appendChild(li);
   }
   $('key-status').textContent = s.hasKey ? 'A Claude API key is saved.' : 'No Claude API key saved yet.';
+  $('s_mode').value = s.mode; showMode();
+  $('s_repo').value = s.github.repo;
+  $('gh-status').textContent = s.github.connected ? 'Connected to ' + s.github.repo + '.' :
+    (s.github.repo && s.github.hasToken ? 'Saved but not connected yet: press Connect GitHub.' : 'Add the repository and an access token, save, then press Connect GitHub.');
   $('s_model').value = s.model;
 }
 
@@ -407,7 +432,7 @@ $('compose').addEventListener('submit', async (e) => {
     toast(err.message);
     try { render(await api('state')); } catch (e2) {}
   } finally {
-    clearInterval(timer); $('send').disabled = false; $('message').disabled = false;
+    clearInterval(timer); $('send').disabled = !!(S && S.pending); $('message').disabled = false;
     if (S) $('hint').textContent = S.hasKey ? 'Ctrl + Enter to send' : 'No Claude API key yet: an admin adds it under Settings.';
   }
 });
@@ -450,7 +475,7 @@ $('edit-photo-form').addEventListener('submit', async (e) => {
     render(await api('image_edit', { file: $('edit-file').value, instruction: text }));
     $('edit-text').value = ''; reloadPreview(); toast('Photo updated in the draft.');
   } catch (err) { toast(err.message); try { render(await api('state')); } catch (e2) {} }
-  finally { clearInterval(timer); btn.disabled = false; btn.textContent = 'Edit photo'; }
+  finally { clearInterval(timer); btn.disabled = !!(S && S.pending); btn.textContent = 'Edit photo'; }
 });
 
 $('view-desktop').onclick = () => $('frame-wrap').classList.remove('phone');
@@ -471,9 +496,41 @@ $('user-form').addEventListener('submit', async (e) => {
 });
 $('settings-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  try { render(await api('settings', { api_key: $('s_key').value, model: $('s_model').value })); $('s_key').value = ''; toast('Settings saved.'); }
-  catch (err) { toast(err.message); }
+  try {
+    render(await api('settings', { api_key: $('s_key').value, model: $('s_model').value, mode: $('s_mode').value, github_repo: $('s_repo').value, github_token: $('s_ghtoken').value }));
+    $('s_key').value = ''; $('s_ghtoken').value = ''; toast('Settings saved.');
+  } catch (err) { toast(err.message); }
 });
+function showMode() {
+  const gh = $('s_mode').value === 'github';
+  document.querySelector('.mode-github').hidden = !gh; document.querySelector('.mode-api').hidden = gh;
+}
+$('s_mode').addEventListener('change', showMode);
+$('gh-connect').onclick = async () => {
+  const b = $('gh-connect'); b.disabled = true; b.textContent = 'Connecting…';
+  try {
+    await api('settings', { mode: $('s_mode').value, github_repo: $('s_repo').value, github_token: $('s_ghtoken').value });
+    $('s_ghtoken').value = '';
+    render(await api('github_connect')); toast('GitHub connected.');
+  } catch (err) { toast(err.message); try { render(await api('state')); } catch (e2) {} }
+  finally { b.disabled = false; b.textContent = 'Connect GitHub'; }
+};
+
+// While Claude works through GitHub, check every few seconds and refresh the preview when it's done.
+let pollTimer = null;
+function schedulePoll(on) {
+  if (!on) { clearTimeout(pollTimer); pollTimer = null; return; }
+  if (pollTimer) return;
+  pollTimer = setTimeout(async () => {
+    pollTimer = null;
+    try {
+      const before = S && S.pending;
+      const s = await api('poll');
+      render(s);
+      if (before && !s.pending) { reloadPreview(); updateThumb(); toast('Claude finished. Check the preview.'); }
+    } catch (err) { schedulePoll(true); }
+  }, 8000);
+}
 $('account-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   try { const r = await api('password', { old: $('a_old').value, new: $('a_new').value }); csrf = r.csrf; e.target.reset(); $('dlg-account').close(); toast('Password changed.'); }
