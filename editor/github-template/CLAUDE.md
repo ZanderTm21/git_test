@@ -17,17 +17,18 @@ It is a static one-page site. The team edits it from a web editor; each request 
   Open it with the Read tool to see it before deciding anything, edit it if asked, and place it on the page where
   the team member wants it (a gallery item, a background, a before/after slot…), following the markup already used
   for that kind of image in `site/index.html`.
-- To change how a photo or logo looks, run the image tool (one call can chain several operations):
-  `python3 tools/edit_image.py site/images/<file> '<json list of ops>'`
-  Add a third argument (`site/images/<new-name>`) to save the result as a new file and keep the original.
-  The list of operations and their parameters is at the top of `tools/edit_image.py`.
-  For crops, look at the photo first and choose the area from what you see.
-- The tool can also write text onto a photo (`text`), put the logo or another site image onto it (`add_image`),
-  add a color layer (`overlay`), a frame (`border`) or rounded corners. When asked to write on a photo, do it on the
-  photo itself with `text`; pick a position, size and background band that keep it readable and look professional.
-- To keep the original photo, save the edited version under a new name and point the page at the new file.
-- You cannot generate new images, download images, or add/remove objects or people in a photo. Say so in
-  `.reply.md` when that is asked, and suggest what you can do instead.
+- Edit photos the way a designer would: look at the photo, decide, change it, look at the result, refine.
+  - Write your own Python for any image edit (Pillow and numpy are installed) in `.work/<name>.py`, then run it with
+    `sitepy .work/<name>.py`. Scripts run from the repository root with no network access; read and write images
+    under `site/images/`. Look at the output with the Read tool and iterate until it looks right.
+  - For quick standard edits there is also `siteimg site/images/<file> '<json list of ops>' [site/images/<new-name>]`
+    (crop, brightness, text, logo watermark, overlay, recolor, remove background…; the list is at the top of
+    `tools/edit_image.py`). Fonts for text: /usr/share/fonts/truetype/dejavu/ (DejaVu Sans/Serif, with diacritics).
+  - Text on photos, watermarks, collages, before/after composites, colour grading, cut-outs on plain backgrounds,
+    frames, resizing and cropping for a specific spot on the page are all fine.
+  - To keep the original, save the edited version under a new name and point the page at the new file.
+- You cannot generate new images from nothing, download images, or realistically add/remove objects or people in a
+  photo. Say so in `.reply.md` when that is asked, and offer what you can do instead.
 
 ## Limits
 - Only edit files inside `site/`. Don't touch `.github/`, `tools/` or `CLAUDE.md`.

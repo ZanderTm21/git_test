@@ -15,7 +15,7 @@ jobs:
     # Only requests the editor created (labelled, opened by the repository owner's token).
     if: contains(github.event.issue.labels.*.name, 'site-edit') && github.event.issue.user.login == github.repository_owner
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: write
       issues: write
@@ -32,8 +32,15 @@ jobs:
       - name: Install tools
         run: |
           npm install -g @anthropic-ai/claude-code
-          python3 -m pip install --quiet pillow
+          python3 -m pip install --quiet pillow numpy
           test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf || sudo apt-get install -y -qq fonts-dejavu-core
+          # Image tools Claude can run, copied where Claude can't change them; they run with no network and no secrets.
+          sudo install -d -m 755 /opt/sitetools
+          sudo install -m 755 tools/run_python.sh /opt/sitetools/run_python.sh
+          sudo install -m 644 tools/edit_image.py /opt/sitetools/edit_image.py
+          printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh "$@"\n' | sudo tee /usr/local/bin/sitepy > /dev/null
+          printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh --tool /opt/sitetools/edit_image.py "$@"\n' | sudo tee /usr/local/bin/siteimg > /dev/null
+          sudo chmod 755 /usr/local/bin/sitepy /usr/local/bin/siteimg
 
       - name: Save the request
         env:
@@ -45,7 +52,7 @@ jobs:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
           claude -p "Handle the change request in .request.md by following CLAUDE.md. Write your reply to the team member in .reply.md." \
-            --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Bash(python3 tools/edit_image.py:*)" \
+            --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Bash(sitepy:*)" "Bash(siteimg:*)" \
             --permission-mode dontAsk \
             --no-session-persistence \
             --output-format text > .claude-log.txt
