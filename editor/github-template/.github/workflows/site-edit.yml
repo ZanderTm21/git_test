@@ -32,15 +32,21 @@ jobs:
       - name: Install tools
         run: |
           npm install -g @anthropic-ai/claude-code
-          python3 -m pip install --quiet pillow numpy
+          sudo /usr/bin/python3 -m pip install --quiet --break-system-packages pillow numpy
           test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf || sudo apt-get install -y -qq fonts-dejavu-core
-          # Image tools Claude can run, copied where Claude can't change them; they run with no network and no secrets.
+          # Sandbox for Claude's Python: a separate user with access to the site files only (see tools/run_python.sh).
+          sudo useradd --system --no-create-home --shell /usr/sbin/nologin sitebox
+          mkdir -p .work
+          chmod -R a+rwX site .work
+          chmod 700 .git
           sudo install -d -m 755 /opt/sitetools
           sudo install -m 755 tools/run_python.sh /opt/sitetools/run_python.sh
           sudo install -m 644 tools/edit_image.py /opt/sitetools/edit_image.py
-          printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh "$@"\n' | sudo tee /usr/local/bin/sitepy > /dev/null
+          for name in python3 python sitepy; do
+            printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh "$@"\n' | sudo tee /usr/local/bin/$name > /dev/null
+          done
           printf '#!/bin/sh\nexec /opt/sitetools/run_python.sh --tool /opt/sitetools/edit_image.py "$@"\n' | sudo tee /usr/local/bin/siteimg > /dev/null
-          sudo chmod 755 /usr/local/bin/sitepy /usr/local/bin/siteimg
+          sudo chmod 755 /usr/local/bin/python3 /usr/local/bin/python /usr/local/bin/sitepy /usr/local/bin/siteimg
 
       - name: Save the request
         env:
@@ -50,18 +56,32 @@ jobs:
       - name: Claude edits the site
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          SITE_WORKSPACE: ${{ github.workspace }}
         run: |
+          umask 0000  # files Claude writes stay editable by the Python sandbox
           claude -p "Handle the change request in .request.md by following CLAUDE.md. Write your reply to the team member in .reply.md." \
-            --allowedTools "Read" "Edit" "Write" "Glob" "Grep" "Bash(sitepy:*)" "Bash(siteimg:*)" \
+            --allowedTools "Read" "Edit" "Write" "Glob" "Grep" \
+              "Bash(python3:*)" "Bash(python:*)" "Bash(sitepy:*)" "Bash(siteimg:*)" \
+              "Bash(cd:*)" "Bash(ls:*)" "Bash(mkdir:*)" "Bash(file:*)" \
             --permission-mode dontAsk \
             --no-session-persistence \
-            --output-format text > .claude-log.txt
+            --output-format stream-json --verbose > .claude-log.jsonl || touch .claude-failed
           test -s .reply.md || echo "Done." > .reply.md
+
+      - name: Show what Claude did
+        if: always()
+        run: |
+          # Each tool call and any refusal, so problems are visible in this log.
+          jq -r 'select(.type=="assistant") | .message.content[]? | select(.type=="tool_use") | "TOOL  \(.name): \(.input.command // .input.file_path // .input.pattern // "" | tostring | .[0:200])"' .claude-log.jsonl || true
+          jq -r 'select(.type=="user") | .message.content[]? | select(.type=="tool_result" and .is_error==true) | "ERROR \(.content | tostring | .[0:300])"' .claude-log.jsonl || true
+          jq -r 'select(.type=="result") | "RESULT \(.subtype) turns=\(.num_turns) denials=\(.permission_denials | length)"' .claude-log.jsonl || true
 
       - name: Save the changes
         run: |
+          test ! -f .claude-failed || { echo "Claude did not finish (see the log above)."; exit 1; }
           git config user.name "site-editor-bot"
           git config user.email "site-editor-bot@users.noreply.github.com"
+          sudo chown -R "$(id -u):$(id -g)" site
           git add -A site
           if git diff --cached --quiet; then
             echo "No file changes."

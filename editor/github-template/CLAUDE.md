@@ -18,12 +18,14 @@ It is a static one-page site. The team edits it from a web editor; each request 
   the team member wants it (a gallery item, a background, a before/after slot…), following the markup already used
   for that kind of image in `site/index.html`.
 - Edit photos the way a designer would: look at the photo, decide, change it, look at the result, refine.
-  - Write your own Python for any image edit (Pillow and numpy are installed) in `.work/<name>.py`, then run it with
-    `sitepy .work/<name>.py`. Scripts run from the repository root with no network access; read and write images
-    under `site/images/`. Look at the output with the Read tool and iterate until it looks right.
+  - Write your own Python for any image edit (Pillow and numpy are installed): `python3 .work/<name>.py` or
+    `python3 -c "..."`. Python runs in a sandbox from the repository root: it can read and write `site/` and `.work/`,
+    with no network. Look at the output with the Read tool and iterate until it looks right.
   - For quick standard edits there is also `siteimg site/images/<file> '<json list of ops>' [site/images/<new-name>]`
     (crop, brightness, text, logo watermark, overlay, recolor, remove background…; the list is at the top of
     `tools/edit_image.py`). Fonts for text: /usr/share/fonts/truetype/dejavu/ (DejaVu Sans/Serif, with diacritics).
+  - Logos for this dark site usually need: crop tight to the artwork, a transparent background (PNG), and light or
+    gold artwork so it reads on black. Do that yourself; don't ask the team member to prepare files.
   - Text on photos, watermarks, collages, before/after composites, colour grading, cut-outs on plain backgrounds,
     frames, resizing and cropping for a specific spot on the page are all fine.
   - To keep the original, save the edited version under a new name and point the page at the new file.

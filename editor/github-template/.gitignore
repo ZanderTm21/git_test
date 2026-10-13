@@ -2,4 +2,6 @@
 .reply.md
 .comment.md
 .claude-log.txt
+.claude-log.jsonl
+.claude-failed
 .work/
