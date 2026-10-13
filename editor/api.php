@@ -245,7 +245,7 @@ switch ($action) {
 
     case 'upload':
         $slot = (string) ($_GET['slot'] ?? '');
-        if (!isset(IMAGE_SLOTS[$slot])) {
+        if ($slot !== '__new__' && !isset(IMAGE_SLOTS[$slot])) {
             fail('Choose where the photo goes.');
         }
         $f = $_FILES['photo'] ?? null;
@@ -260,6 +260,12 @@ switch ($action) {
             fail('Upload a JPG, PNG or WebP photo.');
         }
         @mkdir(DRAFT_DIR . '/images', 0750, true);
+        if ($slot === '__new__') {
+            // A new photo for the library (e.g. attached to a chat request); PNGs stay PNG so transparency survives.
+            $name = 'photo-' . date('Ymd-His') . '-' . bin2hex(random_bytes(2)) . ($info[2] === IMAGETYPE_PNG ? '.png' : '.jpg');
+            save_photo($f['tmp_name'], $info, DRAFT_DIR . '/images/' . $name);
+            out(['uploaded' => $name] + state($user));
+        }
         save_photo($f['tmp_name'], $info, DRAFT_DIR . '/images/' . $slot);
         chat_add('Editor', 'ai', $user['name'] . ' uploaded a photo for "' . IMAGE_SLOTS[$slot] . '".');
         out(state($user));
@@ -465,7 +471,15 @@ function save_photo(string $tmp, array $info, string $dest): void
     $hgt = imagesy($img);
     $scale = min(1, 2400 / max($w, $hgt));
     if ($scale < 1) {
+        imagealphablending($img, false);
+        imagesavealpha($img, true);
         $img = imagescale($img, (int) round($w * $scale), (int) round($hgt * $scale), IMG_BICUBIC);
+    }
+    if (strtolower(pathinfo($dest, PATHINFO_EXTENSION)) === 'png') {
+        imagealphablending($img, false);
+        imagesavealpha($img, true);
+        imagepng($img, $dest, 7);
+        return;
     }
     imagejpeg($img, $dest, 85);
 }

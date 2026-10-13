@@ -147,6 +147,8 @@ dialog form { display: grid; gap: 14px; }
 .list { display: grid; gap: 8px; margin: 0 0 18px; padding: 0; list-style: none; }
 .list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 10px 12px; background: var(--raise); border-radius: 6px; }
 fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; }
+.attach-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.attach-row label.btn { cursor: pointer; }
 .pending { margin: 0 16px 12px; padding: 10px 12px; border: 1px solid rgba(201,162,74,.45); border-radius: 8px; color: var(--gold-2); font-size: .9rem; }
 .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--raise); border: 1px solid var(--gold); padding: 10px 16px; border-radius: 6px; z-index: 10; max-width: calc(100% - 32px); }
 @media (max-width: 860px) {
@@ -208,6 +210,12 @@ fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; }
         <form class="compose" id="compose">
           <label class="field"><span>What should change?</span>
             <textarea id="message" placeholder="e.g. Change the main title to “Bathrooms built to last” and make the buttons a bit larger"></textarea></label>
+          <div class="attach-row">
+            <label class="btn" for="attach">📎 Attach photo</label>
+            <input id="attach" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+            <span id="attach-name" class="muted small"></span>
+            <button class="btn" id="attach-clear" type="button" hidden>Remove</button>
+          </div>
           <div class="row"><span class="muted" id="hint">Ctrl + Enter to send</span><button class="btn btn-gold" id="send" type="submit">Send</button></div>
         </form>
         <details class="photos">
@@ -363,6 +371,7 @@ function render(s) {
   $('send').disabled = !!s.pending; $('edit-send').disabled = !!s.pending;
   schedulePoll(!!s.pending);
   const slot = $('slot'), keep = slot.value; slot.textContent = '';
+  { const o = document.createElement('option'); o.value = '__new__'; o.textContent = 'New photo (add to the photo library)'; slot.appendChild(o); }
   for (const [file, label] of Object.entries(s.slots)) {
     const o = document.createElement('option'); o.value = file;
     o.textContent = label + (s.draftImages.includes(file) ? '  ✓ uploaded' : ''); slot.appendChild(o);
@@ -425,7 +434,16 @@ $('compose').addEventListener('submit', async (e) => {
   const started = Date.now();
   const timer = setInterval(() => { $('hint').textContent = 'Working on it… ' + Math.round((Date.now() - started) / 1000) + 's (usually under a minute)'; }, 1000);
   try {
-    render(await api('ask', { message: text }));
+    let message = text;
+    const file = $('attach').files[0];
+    if (file) {
+      // Upload the attached photo first, then tell Claude its name.
+      const fd = new FormData(); fd.append('photo', file);
+      const up = await api('upload', fd, '&slot=__new__');
+      message += '\n\n[Attached photo: images/' + up.uploaded + ']';
+      clearAttach();
+    }
+    render(await api('ask', { message }));
     $('message').value = ''; reloadPreview();
     if (window.matchMedia('(max-width: 860px)').matches) setTab('preview');
   } catch (err) {
@@ -436,6 +454,12 @@ $('compose').addEventListener('submit', async (e) => {
     if (S) $('hint').textContent = S.hasKey ? 'Ctrl + Enter to send' : 'No Claude API key yet: an admin adds it under Settings.';
   }
 });
+function clearAttach() { $('attach').value = ''; $('attach-name').textContent = ''; $('attach-clear').hidden = true; }
+$('attach').addEventListener('change', () => {
+  const f = $('attach').files[0];
+  $('attach-name').textContent = f ? f.name : ''; $('attach-clear').hidden = !f;
+});
+$('attach-clear').onclick = clearAttach;
 $('message').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('compose').requestSubmit(); });
 
 $('undo').onclick = async () => { try { render(await api('undo')); reloadPreview(); } catch (e) { toast(e.message); } };

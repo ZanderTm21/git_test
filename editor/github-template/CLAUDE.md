@@ -13,9 +13,15 @@ It is a static one-page site. The team edits it from a web editor; each request 
 
 ## Photos
 - Photos are uploaded by the team in the editor; they appear in `site/images/`. You can point the page at any file there.
+- A request may include `[Attached photo: images/NAME]`. That photo is already in `site/images/NAME`.
+  Open it with the Read tool to see it before deciding anything, edit it if asked, and place it on the page where
+  the team member wants it (a gallery item, a background, a before/after slot…), following the markup already used
+  for that kind of image in `site/index.html`.
 - To change how a photo or logo looks, run the image tool (one call can chain several operations):
   `python3 tools/edit_image.py site/images/<file> '<json list of ops>'`
+  Add a third argument (`site/images/<new-name>`) to save the result as a new file and keep the original.
   The list of operations and their parameters is at the top of `tools/edit_image.py`.
+  For crops, look at the photo first and choose the area from what you see.
 - You cannot create, download or fetch images, add or remove objects in a photo, or write text onto it.
   Say so in `.reply.md` when that is asked.
 

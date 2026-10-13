@@ -1,6 +1,7 @@
 """Edit a site image in place with a fixed list of operations.
 
     python3 tools/edit_image.py site/images/hero.jpg '[{"op": "brightness", "amount": 20}]'
+    python3 tools/edit_image.py site/images/photo.jpg '[...]' site/images/photo-bathroom.jpg   # save as a new file
 
 Operations (applied in order):
   crop {x, y, width, height}  fractions 0-1 of the current size, from the top-left corner
@@ -113,23 +114,26 @@ def _keep_alpha(original, rgb):
 
 
 def main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) not in (3, 4):
         raise SystemExit(__doc__)
     path = Path(sys.argv[1])
     if path.parent.as_posix() != "site/images" or not path.is_file():
         raise SystemExit("Only files in site/images/ can be edited.")
+    out = Path(sys.argv[3]) if len(sys.argv) == 4 else path
+    if out.parent.as_posix() != "site/images" or out.suffix.lower() not in (".jpg", ".jpeg", ".png", ".webp"):
+        raise SystemExit("The output must be a .jpg, .png or .webp file in site/images/.")
     ops = json.loads(sys.argv[2])
-    ext = path.suffix.lower()
+    ext = out.suffix.lower()
     im = Image.open(path)
     im = ImageOps.exif_transpose(im)
     im = im.convert("RGBA") if (ext == ".png" or im.mode in ("RGBA", "LA", "P")) and ext != ".jpg" and ext != ".jpeg" else im.convert("RGB")
     for o in ops:
         im = apply(im, o, ext)
     if ext in (".jpg", ".jpeg"):
-        im.convert("RGB").save(path, quality=88)
+        im.convert("RGB").save(out, quality=88)
     else:
-        im.save(path)
-    print(f"Saved {path} ({im.size[0]}x{im.size[1]})")
+        im.save(out)
+    print(f"Saved {out} ({im.size[0]}x{im.size[1]})")
 
 
 if __name__ == "__main__":
