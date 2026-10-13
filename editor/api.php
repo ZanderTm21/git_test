@@ -391,6 +391,13 @@ switch ($action) {
         }
         out(state($user));
 
+    case 'cancel_job':
+        if (gh_pending_job()) {
+            @unlink(DATA_DIR . '/github_job.json');
+            chat_add('Editor', 'ai', $user['name'] . ' cancelled the request that was waiting for Claude. You can send a new one.');
+        }
+        out(state($user));
+
     case 'restore':
         need_admin($user);
         $id = (string) ($in['id'] ?? '');

@@ -115,10 +115,15 @@ function gh_connect(): void
 {
     $repo = gh('GET', '/repos/' . gh_config()['repo']);
     $default = $repo['default_branch'];
-    $tpl = __DIR__ . '/github-template';
+    // The setup files ship inside github_templates.php, so a skipped folder can't leave them empty.
     $files = [];
+    foreach ((array) (@include __DIR__ . '/github_templates.php') as $f => $b64) {
+        $files[$f] = (string) base64_decode((string) $b64, true);
+    }
     foreach (['.github/workflows/site-edit.yml', 'CLAUDE.md', 'tools/edit_image.py', '.gitignore'] as $f) {
-        $files[$f] = (string) file_get_contents($tpl . '/' . $f);
+        if (trim($files[$f] ?? '') === '') {
+            throw new RuntimeException("The editor file github_templates.php is missing or incomplete ({$f}). Upload it to the editor folder and connect again.");
+        }
     }
     try {
         gh('GET', 'git/ref/heads/' . $default);

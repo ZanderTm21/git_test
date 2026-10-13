@@ -206,7 +206,7 @@ fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 14px; }
     <main class="work" data-tab="chat">
       <section class="side" aria-label="Chat">
         <div class="chat" id="chat" aria-live="polite"></div>
-        <div class="pending" id="pending" hidden aria-live="polite"></div>
+        <div class="pending" id="pending" hidden aria-live="polite"><span id="pending-text"></span> <button class="btn" id="pending-cancel" type="button">Cancel</button></div>
         <form class="compose" id="compose">
           <label class="field"><span>What should change?</span>
             <textarea id="message" placeholder="e.g. Change the main title to “Bathrooms built to last” and make the buttons a bit larger"></textarea></label>
@@ -367,7 +367,7 @@ function render(s) {
   $('hint').textContent = (s.mode === 'github' || s.hasKey) ? 'Ctrl + Enter to send' : 'No Claude API key yet: an admin adds it under Settings.';
   const pend = $('pending');
   pend.hidden = !s.pending;
-  if (s.pending) pend.textContent = 'Claude is working on: "' + s.pending.request.slice(0, 90) + '" (sent by ' + s.pending.by + '). The preview updates when it\'s done.';
+  if (s.pending) $('pending-text').textContent = 'Claude is working on: "' + s.pending.request.slice(0, 90) + '" (sent by ' + s.pending.by + '). The preview updates when it\'s done.';
   $('send').disabled = !!s.pending; $('edit-send').disabled = !!s.pending;
   schedulePoll(!!s.pending);
   const slot = $('slot'), keep = slot.value; slot.textContent = '';
@@ -460,6 +460,10 @@ $('attach').addEventListener('change', () => {
   $('attach-name').textContent = f ? f.name : ''; $('attach-clear').hidden = !f;
 });
 $('attach-clear').onclick = clearAttach;
+$('pending-cancel').onclick = async () => {
+  if (!(await ask('Cancel this request?', 'Use this if Claude has been working for a long time or something went wrong. Anything Claude already changed on GitHub is not brought back.', 'Cancel request'))) return;
+  try { render(await api('cancel_job')); } catch (err) { toast(err.message); }
+};
 $('message').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) $('compose').requestSubmit(); });
 
 $('undo').onclick = async () => { try { render(await api('undo')); reloadPreview(); } catch (e) { toast(e.message); } };
