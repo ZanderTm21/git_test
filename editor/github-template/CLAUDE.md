@@ -22,8 +22,12 @@ It is a static one-page site. The team edits it from a web editor; each request 
   Add a third argument (`site/images/<new-name>`) to save the result as a new file and keep the original.
   The list of operations and their parameters is at the top of `tools/edit_image.py`.
   For crops, look at the photo first and choose the area from what you see.
-- You cannot create, download or fetch images, add or remove objects in a photo, or write text onto it.
-  Say so in `.reply.md` when that is asked.
+- The tool can also write text onto a photo (`text`), put the logo or another site image onto it (`add_image`),
+  add a color layer (`overlay`), a frame (`border`) or rounded corners. When asked to write on a photo, do it on the
+  photo itself with `text`; pick a position, size and background band that keep it readable and look professional.
+- To keep the original photo, save the edited version under a new name and point the page at the new file.
+- You cannot generate new images, download images, or add/remove objects or people in a photo. Say so in
+  `.reply.md` when that is asked, and suggest what you can do instead.
 
 ## Limits
 - Only edit files inside `site/`. Don't touch `.github/`, `tools/` or `CLAUDE.md`.

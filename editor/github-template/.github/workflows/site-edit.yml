@@ -33,6 +33,7 @@ jobs:
         run: |
           npm install -g @anthropic-ai/claude-code
           python3 -m pip install --quiet pillow
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf || sudo apt-get install -y -qq fonts-dejavu-core
 
       - name: Save the request
         env:
